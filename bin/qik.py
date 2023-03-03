@@ -1,4 +1,4 @@
-# beautifulk because tiny  # forked in many packages  # missing from:  https://pypi.org
+# beautiful because tiny  # forked in many packages  # missing from:  https://pypi.org
 
 """
 usage: import qik
