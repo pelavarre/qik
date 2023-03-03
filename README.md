@@ -3,7 +3,7 @@ Competently welcome you into quick casual Python work, batteries included
 
 Except we don't have great doc yet, so please ask us questions
 
-First demo
+# First demo
 
     git clone https://github.com/pelavarre/qik.git
     python3 -i -c ''
@@ -32,12 +32,14 @@ First demo
     t2 = qik.QikTable(rows2)
     columns2 = dict(t2)
     print(columns2)  # {'x': [0, 9], 'y': [0, 9], 'z': [0, 9]}
+    
+# Future work
 
 Next tests could be adding Rows, adding Columns, deleting Rows, deleting Columns
 
-Those tests won't pass yet
+Those tests won't pass yet - and maybe they shouldn't - maybe we should consciously limit Tables to be more of an outward-facing thing, usually built near to after you finish editing them - until then, switch between working the Rows and Columns as needed, work with the Rows and Columns as indices on a large shared pile of Cells, edit your Rows and Columns as you please
 
-Myself I don't immediately know why the '= list' and '= dict' here work already
+Meanwhile, myself I don't yet know why the '= list' and '= dict' here do work already, and I don't yet know why adding/ deleting don't work, so i guess i'll trace how we're calling 'def \_\_getattribute\_\_' more closely till i do know what's going on
 
 ## Copied from
 
