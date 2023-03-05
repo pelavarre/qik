@@ -35,9 +35,9 @@ Except we don't have great doc yet, so please ask us questions
 
 # Coming soon
 
-posted here in GitHub is how to do this with:  def __getattribute__
+posted here in GitHub is how to do this with:  def \_\_getattribute\_\_
 
-but Mastodon knows how to do it more simply, with just 3 lines of:  def keys, def __getitem__
+but Mastodon knows how to do it more simply, with just 3 lines of:  def keys, def \_\_getitem\_\_
 
 Mastodon at https://social.vivaldi.net/@pelavarre/109972088721120368
 same answer in Twitter at https://twitter.com/pelavarre/status/1632447582923550721?s=20
