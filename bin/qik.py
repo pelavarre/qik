@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # beautiful because tiny  # forked in many packages  # missing from:  https://pypi.org
 
 """
@@ -15,304 +17,318 @@ examples:
   print(t1)
 
   #
-  # . | A |    B     | C
-  # --|---|----------|---
-  # 0 | 2 | three    |  5
-  # 1 | 8 | thirteen | 21
+  # . |  A  |    B     |   C
+  # --|-----|----------|------
+  # 0 |   5 | three    | True
+  # 1 | 123 | thirteen | False
   # (2 rows)
   #
 
   columns = dict(t1)
-  print(columns)  # {'.': [0, 1], 'A': [2, 8], ... }
-  print(repr(t1))  # QikTable({'.': [0, 1], 'A': [2, 8], ... })
+  print(columns)  # {'.': [0, 1], 'A': [5, 123], 'B': ['three', ... ]}
 
   rows = list(t1)
-  print(rows)  # [{'.': 0, 'A': 2, 'B': 'three', 'C': 5}, {'.': 1, ... }]
-  print(repr(t1))  # QikTable([{'.': 0, 'A': 2, 'B': 'three', 'C': 5}, ...  }])
+  print(rows)  # [{'.': 0, 'A': 5, 'B': 'three', 'C': True}, {'.': 1, ... }]
 
-  rows2 = [dict(x=0, y=0, z=0), dict(x=9, y=9, z=9)]
-  t2 = qik.QikTable(rows2)
-  columns2 = dict(t2)
-  print(columns2)  # {'x': [0, 9], 'y': [0, 9], 'z': [0, 9]}
+  print(repr(t1))  # QikTable({'.': [0, 1], 'A': [5, 123], 'B': ... ]})
+
+  t11 = qik.QikTable(t1)
+  t12 = qik.QikTable(columns)
+  t13 = qik.QikTable(rows)
+
+  print(columns == dict(t13))  # True
+  print(rows == list(t12))  # True
+
+  print(t1 == t11)
+  print(t1 == t12)
+  print(t1 == t13)
+  print(t1 == columns)
+  print(t1 == rows)
+
+  print(str(t1) == str(t11))  # True
+  print(str(t1) == str(t12))  # True
+  print(str(t1) == str(t13))  # True
+
+  print(repr(t1) == repr(t11))  # True
+  print(repr(t1) == repr(t12))  # True
+  print(repr(t1) == repr(t13))  # True
+
+  c = t1['A']
+  r = t1[-1]
+  t1['Z'] = c  # TypeError: 'QikTable' object does not support item assignment
+  t1.append(r)  # TypeError: 'QikTable' object defines no 'append' mutation
 """
 
 # code reviewed by people, and by Black and Flake8
 
 
-_DICT_DIR_SET = set(dir(dict())) - set(dir(list()))  # keys items get update popitem
-_LIST_DIR_SET = set(dir(list())) - set(dir(dict()))  # append count extend insert remove
-
-_OBJECT_DIR_SET = set(dir(object()))
-
-
-assert "__len__" not in (_DICT_DIR_SET | _LIST_DIR_SET)
-assert "__getitem__" not in (_DICT_DIR_SET | _LIST_DIR_SET)
+FEATURE_VPRINT = False
 
 
 class QikTable:
-    """Contain Cells indexed by Str Column Key and by Int Row Index"""
+    """Index Cells by Int Row Index and by Str|None Column Key"""
 
     def __init__(self, table=None):
-        """Form a QikTable as a Clone of the Rows or Columns of a Table"""
+        """Form a QikTable as a Clone, of the Columns, else of the Rows, else of Both"""
 
-        columns = None
-        rows = None
+        vprint("enter '__init__'", type(table).__name__)
 
-        has_append = hasattr(table, "append")  # like a List
-        has_keys = hasattr(table, "keys")  # like a Dict
+        has_append = hasattr(table, "append")
+        has_keys = hasattr(table, "keys")
 
         if has_keys and not has_append:  # like Dict but unlike List
             columns = dict(table)
+            rows = columns_to_rows(columns)
         elif has_append and not has_keys:  # like List but unlike Dict
             rows = list(table)
+            columns = rows_to_columns(rows)
         else:
-            table_columns = table._columns
-            table_rows = table._rows
-            if table_rows is None:
-                assert table_columns is not None  # like Dict but unlike List
-                columns = dict(table_columns)
-            else:
-                assert columns is None  # like List but unlike Dict
-                rows = list(table_rows)
+            columns = dict(table.columns)
+            rows = list(table.rows)
 
-        self._columns = columns
-        self._rows = rows
+        self.columns = columns
+        self.rows = rows
 
-    def __getattribute__(self, name):
-        """Work like a Dict, or work like a List, else work like part or whole Self"""
+    def __eq__(self, value):
+        """Say if Self indexes equal Cells inside same as Value does"""
 
-        # Work like a Dict
+        table = QikTable(value)
 
-        if name in _DICT_DIR_SET:
-            assert name not in _LIST_DIR_SET, name
+        columns_eq = self.columns == table.columns
+        rows_eq = self.rows == table.rows
+        eq = columns_eq and rows_eq
 
-            self._as_new_columns()
-            result = self._columns.__getattribute__(name)
+        return eq
 
-            return result
+    def append(self, item, /):
+        """Exist to mark Self as List-Like, but raise TypeError if called"""
 
-        # Work like a List
+        vprint("enter 'append'", type(item).__name__)
 
-        if name in _LIST_DIR_SET:
-            assert name not in _DICT_DIR_SET, name
+        raise TypeError("'QikTable' object defines no 'append' mutation")
 
-            self._as_new_rows()
-            result = self._rows.__getattribute__(name)
+    def keys(self):
+        """Yield each Key of the Columns, else raise KeyError"""
 
-            return result
+        vprint("enter 'keys'")
 
-        # Work like part of Self
-
-        if False:
-
-            if name not in _OBJECT_DIR_SET:
-                if name not in "_columns _rows".split():
-                    _columns = super().__getattribute__("_columns")
-                    _rows = super().__getattribute__("_rows")
-
-                    if _rows is None:
-                        result = _columns.__getattribute__(name)
-                    else:
-                        assert _columns is None
-                        result = _rows.__getattribute__(name)
-
-                    return result
-
-        # Work like Self
-
-        result = super().__getattribute__(name)
-
-        return result
-
-    def _as_new_columns(self):
-        """Clone as new Dict, else reshape List into new Dict"""
-
-        _columns = self._columns
-        _rows = self._rows
-
-        # Clone as new Dict
-
-        if _columns is not None:
-            assert _rows is None
-            columns = dict(_columns)
-        elif not _rows:
-            columns = dict()
-        else:
-
-            # Else reshape List into new Dict
-
-            keys_lists = sorted(set(tuple(r.keys()) for r in _rows))
-            if len(keys_lists) != 1:
-                raise KeyError()
-            keys = keys_lists[-1]
-
-            for k in keys:
-                value_lists = list(list(r[k] for r in _rows) for k in keys)
-            columns = dict(zip(keys, value_lists))
-
-        # Succeed
-
-        self._columns = columns
-        self._rows = None
-
-        return columns
-
-    def _as_new_rows(self):
-        """Clone as new List, else reshape Dict into new List"""
-
-        _columns = self._columns
-        _rows = self._rows
-
-        # Clone as new List
-
-        if _rows is not None:
-            assert _columns is None
-            rows = list(_rows)
-        elif not _columns:
-            rows = list()
-        else:
-
-            # Else reshape Dict into new List
-
-            keys = list(_columns.keys())
-            value_lists = list(_columns.values())
-            height = max(len(_) for _ in value_lists)
-
-            rows = list()
-            for i in range(height):
-                values = list(c[i] for c in value_lists)  # may raise IndexError
-
-                row = dict(zip(keys, values))
-                rows.append(row)
-
-        # Succeed
-
-        self._columns = None
-        self._rows = rows
-
-        return rows
+        return self.columns.keys()
 
     def __len__(self):
-        """Count out the Length of Rows"""
+        """Count the Rows, else raise ValueError"""
 
-        rows = self._as_new_rows()
-        result = rows.__len__()
+        vprint("enter '__len__'")
 
-        return result
+        return self.rows.__len__()
 
     def __getitem__(self, key):
-        """Get Item by Str from Columns, else by Int from Rows, else by Key from Self"""
+        """Get by Str|None from Columns, else by Int from Rows, else raise TypeError"""
 
-        if isinstance(key, str):
-            if not self._columns:
-                self._as_new_columns()
+        vprint("enter '__getitem__'", type(key).__name__)
 
+        if (key is None) or isinstance(key, str):
+            cells = self.columns[key]  # raises TypeError when:  columns is None
+            item = cells
         elif isinstance(key, int):
-            if not self._rows:
-                self._as_new_rows()
-
-        _columns = self._columns
-        _rows = self._rows
-
-        if _rows is None:
-            result = _columns[key]  # may raise KeyError
+            row = self.rows[key]  # raises TypeError when:  rows is None
+            item = row
         else:
-            assert _columns is None
-            result = _rows[key]  # may raise IndexError
+            raise TypeError(
+                "table indices must be Int|Str|None, not {!r}".format(
+                    type(key).__name__
+                )
+            )
 
-        return result
+        return item
 
     def __repr__(self):
-        """Print the Code to form a Clone of Self"""
+        """Form the Code to form a Clone of Self"""
 
-        _columns = self._columns
-        _rows = self._rows
+        vprint("enter '__repr__'")
 
-        if _rows is None:
-            obj = _columns  # rep as Dict[Key,List[Any]]
-        else:
-            assert _columns is None
-            obj = _rows  # rep as List[Dict[Key,Any]]
+        rep = "QikTable({!r})".format(self.columns)  # yep
+        # rep = "QikTable({!r})".format(self.rows)  # nope
 
-        line = "QikTable({!r})".format(obj)
-
-        return line
+        return rep
 
     def __str__(self):
-        """Print a concise but loose sketch of Self"""
+        """Form a concise but loose sketch of the Columns and the Rows"""
 
-        _columns = self._columns
-        _rows = self._rows
+        vprint("enter '__str__'")
 
-        if _columns is None:
-            _columns = self._as_new_columns()
-        else:
-            assert _rows is None
-            _rows = self._as_new_rows()
+        rep = table_str(self)
 
-        # Print the Headers
+        return rep
 
-        lines = list()
 
-        widths = list(max((1 + len(str(c)) + 1) for c in v) for v in _columns.values())
-        widths_by_k = dict(zip(_columns.keys(), widths))
+def table_str(self):
+    """Form a concise but loose sketch of the Columns and the Rows"""
+
+    vprint("enter 'table_str'")
+
+    columns = self.columns
+    rows = self.rows
+
+    # Print the Headers
+
+    lines = list()
+
+    widths = list(max((1 + len(str(c)) + 1) for c in v) for v in columns.values())
+    widths_by_k = dict(zip(columns.keys(), widths))
+
+    reps = list()
+    for (k, w) in widths_by_k.items():
+        rep = str(k).center(w - 2)
+        reps.append(rep)
+
+    line = " | ".join(reps)
+    lines.append(line)
+
+    # Print the Separators
+
+    reps = list()
+    for (k, w) in widths_by_k.items():
+        rep = (w - 2) * "-"
+        reps.append(rep)
+
+    line = "-|-".join(reps)
+    lines.append(line)
+
+    # Print the Rows
+
+    for r in rows:
 
         reps = list()
         for (k, w) in widths_by_k.items():
-            rep = str(k).center(w - 2)
+            v = r[k]
+
+            rep = w * " "  # blanks out the None cells
+            if v is not None:
+                if (not hasattr(v, "__int__")) or (v is False) or (v is True):
+                    rep = str(v).ljust(w - 2)
+                else:
+                    rep = str(v).rjust(w - 2)
+
             reps.append(rep)
 
         line = " | ".join(reps)
         lines.append(line)
 
-        # Print the Separators
+    # Print the Count of Rows
 
-        reps = list()
-        for (k, w) in widths_by_k.items():
-            rep = (w - 2) * "-"
-            reps.append(rep)
+    line = "({} rows)".format(len(rows))
+    lines.append(line)
 
-        line = "-|-".join(reps)
-        lines.append(line)
+    # Succeed
 
-        # Print the Rows
+    chars = "\n".join(_.rstrip() for _ in lines)
 
-        for r in _rows:
+    return chars
 
-            reps = list()
-            for (k, w) in widths_by_k.items():
-                v = r[k]
 
-                rep = w * " "
-                if v is not None:
-                    if hasattr(v, "__int__"):
-                        rep = str(v).rjust(w - 2)
-                    else:
-                        rep = str(v).ljust(w - 2)  # todo: 'ljust' of 'bool'
+def columns_to_rows(columns):
+    """Pick the Rows out of some Columns"""
 
-                reps.append(rep)
+    vprint("enter 'columns_to_rows'")
 
-            line = " | ".join(reps)
-            lines.append(line)
+    rows = list()
+    if columns:
+        value_lists = list(columns.values())
 
-        # Print the Count of Rows
+        heights = sorted(set(len(_) for _ in value_lists))
+        if len(heights) != 1:
+            raise ValueError("__len__() should return 1 height, not {}".format(heights))
 
-        line = "({} rows)".format(len(_rows))
-        lines.append(line)
+        height = heights[-1]
+        for i in range(height):
+            rows.append(dict())
 
-        # Succeed
+        for (k, vv) in columns.items():
+            for i in range(height):
+                r = rows[i]
+                r[k] = vv[i]
 
-        chars = "\n".join(_.rstrip() for _ in lines)
+    return rows
 
-        return chars
+
+def rows_to_columns(rows):
+    """Pick the Columns out of some Rows"""
+
+    vprint("enter 'rows_to_columns'")
+
+    columns = dict()
+    if rows:
+
+        key_lists = sorted(set(tuple(r.keys()) for r in rows))
+        if len(key_lists) != 1:
+            raise KeyError(len(key_lists), key_lists)
+
+        key_list = key_lists[-1]
+        for k in key_list:
+            columns[k] = list()
+
+        for r in rows:
+            for (k, v) in r.items():
+                columns[k].append(v)
+
+    return columns
+
+
+def vprint(*args, **kwargs):
+    if FEATURE_VPRINT:
+        print(*args, **kwargs)
 
 
 _QIK_TABLE_1 = QikTable(
     [
-        {".": 0, "A": 2, "B": "three", "C": 5},  # some Prime's
-        {".": 1, "A": 8, "B": "thirteen", "C": 21},  # some Fibonacci's
+        {".": 0, "A": 5, "B": "three", "C": True},
+        {".": 1, "A": 123, "B": "thirteen", "C": False},
     ]
 )
+
+
+if __name__ == "__main__":  # run most of the test of this Py File's DocString
+
+    import sys
+
+    qik = sys.modules[__name__]
+
+    if FEATURE_VPRINT:
+        breakpoint()
+
+    t1 = qik._QIK_TABLE_1
+    print(t1)
+
+    columns = dict(t1)
+    print(columns)
+
+    rows = list(t1)
+    print(rows)
+
+    print(repr(t1))
+
+    t11 = qik.QikTable(t1)
+    t12 = qik.QikTable(columns)
+    t13 = qik.QikTable(rows)
+
+    print(columns == dict(t13))
+    print(rows == list(t12))
+
+    print(t1 == t11)
+    print(t1 == t12)
+    print(t1 == t13)
+    print(t1 == columns)
+    print(t1 == rows)
+
+    print(str(t1) == str(t11))
+    print(str(t1) == str(t12))
+    print(str(t1) == str(t13))
+
+    print(repr(t1) == repr(t11))
+    print(repr(t1) == repr(t12))
+    print(repr(t1) == repr(t13))
+
+    # don't work here to mark the test results as correct or not
 
 
 # posted into:  https://github.com/pelavarre/qik/blob/main/bin/qik.py
